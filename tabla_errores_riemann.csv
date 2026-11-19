@@ -1,0 +1,5 @@
+Metodo_Integracion;Formula_Operativa;Volumen_Vehiculos;Error_Absoluto_Vehiculos;Error_Relativo_Porcentual
+Segundo Teorema Fundamental (Analitico Exacto);V = Q(b) - Q(a);5207.30;0.00;0.000%
+Suma de Riemann Izquierda (S_L);sum(q(t_i) * dt);5057.27;150.03;2881%
+Suma de Riemann Derecha (S_R);sum(q(t_{i+1}) * dt);5330.56;123.25;2367%
+Regla del Punto Medio (S_M);sum(q(m_i) * dt);5214.00;6.70;0.129%

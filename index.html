@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Modelado de Flujo Vehicular y Colas — Av. Carrera 68 (Compensar)</title>
+  <meta
+    name="description"
+    content="Informe interactivo de Cálculo Integral sobre congestión vehicular frente al frente de obra de la Avenida Carrera 68 (sector Fundación Universitaria Compensar), basado en aforos SDM Nodo 22699."
+  />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,600;1,6..72,500&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Barra superior -->
+  <header class="topbar" id="navbar">
+    <div class="container topbar__inner">
+      <a href="#inicio" class="brand">
+        <span class="brand__title">TráficoIntegral</span>
+        <span class="brand__meta">Av. Cr. 68 · Nodo 22699</span>
+      </a>
+
+      <button class="nav-toggle" id="navToggle" type="button" aria-label="Abrir menú">Menú</button>
+
+      <nav aria-label="Secciones del proyecto">
+        <ul class="nav-list">
+          <li><a href="#problematica">Problemática</a></li>
+          <li><a href="#modelo">Modelo</a></li>
+          <li><a href="#simulador">Simulador</a></li>
+          <li><a href="#implementacion">Código</a></li>
+          <li><a href="#conclusiones">Conclusiones</a></li>
+          <li><a href="#integrantes">Integrantes</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="inicio">
+    <!-- Portada -->
+    <section class="masthead">
+      <div class="container">
+        <div class="masthead__kicker">
+          Fundación Universitaria Compensar · Ingeniería de Software · Cálculo Integral (2026)
+        </div>
+        <h1 class="masthead__title">
+          Modelado continuo del flujo vehicular y colas en la Avenida Carrera 68
+        </h1>
+        <p class="masthead__lead">
+          Análisis cuantitativo del cuello de botella generado por las obras de TransMilenio (Grupo 5, entre Calle 26 y
+          Calle 53, frente a Compensar). A partir de conteos oficiales de la Secretaría Distrital de Movilidad cada 15
+          minutos, se ajusta una tasa continua <code>q(t)</code>, se calcula el volumen acumulado con el Segundo
+          Teorema Fundamental del Cálculo, se contrasta con Sumas de Riemann y se dimensiona la cola determinista
+          <code>D/D/1</code>.
+        </p>
+
+        <div class="masthead__actions">
+          <a href="#simulador" class="btn btn--primary">Abrir simulador interactivo</a>
+          <a href="#datos-resultados" class="btn">Ver datos y resultados</a>
+          <a href="#integrantes" class="btn">Integrantes del proyecto</a>
+        </div>
+
+        <div class="metrics-strip" role="region" aria-label="Resultados principales">
+          <div class="metric-cell">
+            <div class="metric-cell__label">Volumen acumulado exacto (6:15–7:45 a.m.)</div>
+            <div class="metric-cell__value metric-cell__value--navy">5 207.30 veh</div>
+            <div class="metric-cell__note">∫₀¹·⁵ q(t) dt vía Segundo TFC</div>
+          </div>
+          <div class="metric-cell">
+            <div class="metric-cell__label">Caudal pico instantáneo</div>
+            <div class="metric-cell__value">3 787 veh/h</div>
+            <div class="metric-cell__note">7:25 a.m. (t = 1.175 h) vs media 3 476</div>
+          </div>
+          <div class="metric-cell">
+            <div class="metric-cell__label">Cola máxima represada (Q<sub>máx</sub>)</div>
+            <div class="metric-cell__value metric-cell__value--red">1 412.43 veh</div>
+            <div class="metric-cell__note">t* = 2.248 h (8:29 a.m., C<sub>obra</sub> = 2 800)</div>
+          </div>
+          <div class="metric-cell">
+            <div class="metric-cell__label">Error Punto Medio (n = 6)</div>
+            <div class="metric-cell__value">0.129 %</div>
+            <div class="metric-cell__note">S<sub>M</sub> = 5 214.00 veh (Δ = 6.70 veh)</div>
+          </div>
+        </div>
+
+        <p class="authors-line">
+          <strong>Autores:</strong> Andrés Salinas, Nicolás Cáceres, Paula García, Juan Méndez, Laura Alquichides
+          &nbsp;·&nbsp; <strong>Docente:</strong> Francisco Esteban Rodríguez Medranda
+        </p>
+      </div>
+    </section>
+
+    <!-- 1. Problemática -->
+    <section id="problematica" class="section section--paper">
+      <div class="container">
+        <div class="section-heading">
+          <span class="section-num">01</span>
+          <h2>Problemática vial y datos de campo</h2>
+        </div>
+        <p class="section-intro">
+          La construcción de los carriles exclusivos y la cimentación de la futura estación de TransMilenio frente a la
+          sede de Compensar redujo severamente la capacidad de paso sobre la Avenida Carrera 68.
+        </p>
+
+        <div class="two-col">
+          <div>
+            <h3>Contexto físico y afectación a la comunidad</h3>
+            <p>
+              En el tramo comprendido entre la Avenida Calle 26 y la Calle 53 (Grupo 5 de la troncal Av. 68), la
+              sección transversal se redujo de <strong>4 carriles mixtos por sentido a únicamente 2 carriles
+              provisionales</strong>. De acuerdo con los parámetros del Highway Capacity Manual (HCM) y los Planes de
+              Manejo de Tránsito, la fricción lateral por cerramientos, angostamiento y maniobras de maquinaria fija una
+              capacidad efectiva residual de <strong>C<sub>obra</sub> = 2 800 veh/h</strong> (1 400 veh/h por carril).
+            </p>
+            <p>
+              Para estudiantes, docentes y personal administrativo de Compensar, recorridos locales de aproximación que
+              en flujo libre toman entre <strong>10 y 15 minutos</strong> escalan en hora pico matinal a
+              <strong>45–65 minutos</strong>, obligando a anticipar la salida entre 45 y 60 minutos para evitar retardos
+              en las clases de 6:00 y 7:00 a.m.
+            </p>
+
+            <blockquote class="pullquote">
+              <span class="pullquote__caption">Pregunta orientadora</span>
+              En el tramo de la Av. Carrera 68 entre Calle 26 y Calle 53, ¿cuál es el volumen vehicular acumulado entre
+              las 6:15 y 7:45 a.m. mediante el Teorema Fundamental del Cálculo frente a Sumas de Riemann, en qué momento
+              la demanda supera la capacidad de obra y cuánto tarda la cola en disiparse?
+            </blockquote>
+
+            <h3>Objetivo general y objetivos específicos</h3>
+            <p>
+              <strong>Objetivo general:</strong> Modelar analítica y computacionalmente la congestión y el volumen
+              vehicular durante la hora pico matinal aplicando el Teorema Fundamental del Cálculo, Sumas de Riemann y
+              teoría determinista de colas sobre registros de campo de la SDM.
+            </p>
+            <ol class="clean-list">
+              <li>
+                Estructurar aforos vehiculares oficiales cada 15 minutos (<code>Δt = 0.25 h</code>) por tipología para
+                obtener la tasa horaria de arribos.
+              </li>
+              <li>
+                Ajustar una función continua cuadrática <code>q(t)</code> por mínimos cuadrados que capture la curvatura
+                del periodo pico.
+              </li>
+              <li>
+                Calcular el volumen acumulado exacto <code>V</code> mediante antiderivación y contrastar su error frente
+                a las Sumas de Riemann por Izquierda, Derecha y Punto Medio.
+              </li>
+              <li>
+                Resolver el instante de saturación <code>t_inicio</code>, la cola máxima <code>Q_máx</code>, el
+                despeje <code>t_fin</code> y la demora total acumulada <code>TTD</code>.
+              </li>
+            </ol>
+          </div>
+
+          <figure class="figure-box">
+            <svg
+              viewBox="0 0 560 225"
+              width="100%"
+              role="img"
+              aria-label="Esquema de estrechamiento de 4 carriles a 2 carriles frente a Compensar"
+            >
+              <polygon
+                points="12,24 250,24 315,62 548,62 548,162 315,162 250,200 12,200"
+                fill="#f1f5f9"
+                stroke="#64748b"
+                stroke-width="1.5"
+              />
+              <!-- Líneas de 4 carriles a la izquierda y 2 a la derecha -->
+              <line x1="16" y1="68" x2="248" y2="68" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="8 6" />
+              <line x1="16" y1="112" x2="250" y2="112" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="8 6" />
+              <line x1="16" y1="156" x2="248" y2="156" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="8 6" />
+              <line x1="315" y1="112" x2="544" y2="112" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="8 6" />
+
+              <!-- Zona de obra cerrada -->
+              <polygon
+                points="250,162 548,162 548,200 250,200"
+                fill="#fef2f2"
+                stroke="#b91c1c"
+                stroke-width="1.4"
+                stroke-dasharray="5 4"
+              />
+              <text
+                x="399"
+                y="185"
+                fill="#991b1b"
+                font-family="IBM Plex Mono, monospace"
+                font-size="11"
+                font-weight="600"
+                text-anchor="middle"
+              >
+                Cerramiento de obra (2 carriles suprimidos)
+              </text>
+
+              <!-- Textos técnicos -->
+              <text
+                x="130"
+                y="50"
+                fill="#111827"
+                font-family="Inter, sans-serif"
+                font-size="12"
+                font-weight="700"
+                text-anchor="middle"
+              >
+                4 carriles de aproximación
+              </text>
+              <text
+                x="130"
+                y="95"
+                fill="#374151"
+                font-family="IBM Plex Mono, monospace"
+                font-size="11"
+                text-anchor="middle"
+              >
+                q(t) pico = 3 787 veh/h
+              </text>
+              <rect x="38" y="122" width="184" height="26" rx="4" fill="#fee2e2" stroke="#b91c1c" />
+              <text
+                x="130"
+                y="139"
+                fill="#7f1d1d"
+                font-family="IBM Plex Mono, monospace"
+                font-size="11"
+                font-weight="600"
+                text-anchor="middle"
+              >
+                Cola máx: 1 412.43 veh
+              </text>
+
+              <text
+                x="430"
+                y="95"
+                fill="#1d3557"
+                font-family="Inter, sans-serif"
+                font-size="12"
+                font-weight="700"
+                text-anchor="middle"
+              >
+                2 carriles efectivos
+              </text>
+              <text
+                x="430"
+                y="138"
+                fill="#1d3557"
+                font-family="IBM Plex Mono, monospace"
+                font-size="11.5"
+                font-weight="600"
+                text-anchor="middle"
+              >
+                C_obra = 2 800 veh/h
+              </text>
+            </svg>
+            <figcaption>
+              <strong>Esquema operativo del tramo Calle 26 – Calle 53:</strong> la transición de 4 a 2 carriles
+              provisionales hace que, entre las 6:21 a.m. y las 8:29 a.m., el flujo entrante <code>q(t)</code> supere
+              la capacidad de descarga <code>C_obra</code>, acumulando vehículos hasta <code>t*</code>.
+            </figcaption>
+          </figure>
+        </div>
+
+        <!-- Tabla empírica SDM Nodo 22699 integrada en la sección 01 -->
+        <div id="datos-resultados" class="table-wrap" style="margin-top: 2.25rem; margin-bottom: 0;">
+          <div class="table-header">
+            <div>
+              <h3>Aforo vehicular cada 15 minutos (SDM Estudio N.° 325 · Nodo 22699)</h3>
+              <small>Av. Calle 68 × Carrera 65, 2 de marzo de 2022, sentido NO · Franja 6:15 a 7:45 a.m.</small>
+            </div>
+            <a href="./plantilla_datos.csv" download class="btn btn--sm">Descargar datos (CSV)</a>
+          </div>
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th class="num">Minuto</th>
+                  <th class="num">Tiempo t (Hora)</th>
+                  <th class="num">Livianos (L)</th>
+                  <th class="num">Buses (B)</th>
+                  <th class="num">Camiones (C)</th>
+                  <th class="num">Motos (M)</th>
+                  <th class="num">Conteo 15 min</th>
+                  <th class="num">Tasa q(t) [veh/h]</th>
+                  <th class="num">C<sub>obra</sub></th>
+                </tr>
+              </thead>
+              <tbody id="empiricalTableBody"></tbody>
+            </table>
+          </div>
+          <div class="table-footnote">
+            Conteos motorizados oficiales obtenidos como la suma de <code>Livianos</code>, <code>Buses</code>,
+            <code>Camiones</code> y <code>Motos</code> en periodos de 15 minutos. La columna <code>q(t)</code>
+            almacena el flujo horario evaluado sobre la curva cuadrática de ajuste.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Modelo q(t), Teorema Fundamental y Sumas de Riemann -->
+    <section id="modelo" class="section">
+      <div class="container">
+        <div class="section-heading">
+          <span class="section-num">02</span>
+          <h2>Modelo matemático <em>q(t)</em>, Teorema Fundamental y Riemann</h2>
+        </div>
+        <p class="section-intro">
+          Evaluar un corredor congestionado usando un promedio horario oculta los picos reales de saturación y
+          subestima exponencialmente las demoras por la convexidad del tiempo de viaje.
+        </p>
+
+        <div class="three-col" style="margin-bottom: 2rem;">
+          <div>
+            <h3>Sesgo de agregación</h3>
+            <p>
+              El promedio escalar entre 6:15 y 7:45 a.m. es <strong>3 476 veh/h</strong>, ocultando el máximo
+              instantáneo de <strong>3 787 veh/h</strong> a las 7:25 a.m. (una subestimación de 311 veh/h).
+            </p>
+          </div>
+          <div>
+            <h3>Desigualdad de Jensen (BPR)</h3>
+            <p>
+              La función de demora <code>t<sub>v</sub>(q) = t<sub>0</sub> [1 + α(q/C)<sup>β</sup>]</code> con
+              <code>β ≈ 4</code> es convexa; por la desigualdad de Jensen,
+              <code>E[t<sub>v</sub>(q)] &gt; t<sub>v</sub>(E[q])</code>.
+            </p>
+          </div>
+          <div>
+            <h3>Memoria física del sistema</h3>
+            <p>
+              Un corte discreto ignora que, cuando baja la demanda después del pico, la cola retenida sigue evacuándose
+              a tasa <code>C<sub>obra</sub></code> durante más de una hora adicional.
+            </p>
+          </div>
+        </div>
+
+        <!-- Ecuación 1: q(t) -->
+        <div class="eq-block" style="margin-bottom: 1.75rem;">
+          <div class="eq-block__title">1. Tasa continua ajustada q(t)</div>
+          <div class="eq-block__formula">
+            <div class="math-line">
+              <em>q</em>(<em>t</em>) = −857.14<em>t</em><sup>2</sup> + 2 014.40<em>t</em> + 2 603.59
+              <span class="math-val">[veh/h]</span>
+            </div>
+          </div>
+          <div class="eq-block__note">
+            Vértice en <code>t<sub>pico</sub> = 1.175 h</code> (7:25 a.m.) con demanda máxima de
+            <code>3 787 veh/h</code>.
+          </div>
+        </div>
+
+        <!-- Tabla dimensional -->
+        <div class="table-wrap" style="margin-bottom: 2.25rem;">
+          <div class="table-header">
+            <div>
+              <h3>Definición de variables y análisis dimensional</h3>
+              <small>Homogeneidad dimensional de cada magnitud en el modelo continuo</small>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Símbolo</th>
+                  <th>Variable / Parámetro</th>
+                  <th>Unidades</th>
+                  <th>Interpretación física</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>t</code></td>
+                  <td>Tiempo transcurrido</td>
+                  <td><code>h</code></td>
+                  <td>Horas desde el inicio de la ventana matinal (<code>t = 0</code> → 6:15 a.m.).</td>
+                </tr>
+                <tr>
+                  <td><code>q(t)</code></td>
+                  <td>Tasa instantánea de flujo</td>
+                  <td><code>veh/h</code></td>
+                  <td>Derivada temporal de llegadas acumuladas <code>dA/dt</code>.</td>
+                </tr>
+                <tr>
+                  <td><code>V</code></td>
+                  <td>Volumen acumulado</td>
+                  <td><code>veh</code></td>
+                  <td>Integral definida <code>[veh/h] · [h] = [veh]</code> en <code>[0, 1.5] h</code>.</td>
+                </tr>
+                <tr>
+                  <td><code>C_obra</code></td>
+                  <td>Capacidad residual</td>
+                  <td><code>veh/h</code></td>
+                  <td>Tasa máxima de evacuación por los 2 carriles habilitados (<code>2 800 veh/h</code>).</td>
+                </tr>
+                <tr>
+                  <td><code>Q_cola(t)</code></td>
+                  <td>Longitud de cola</td>
+                  <td><code>veh</code></td>
+                  <td>Vehículos retenidos entre <code>t_inicio</code> y <code>t_fin</code>.</td>
+                </tr>
+                <tr>
+                  <td><code>TTD</code></td>
+                  <td>Demora Total Vehicular</td>
+                  <td><code>veh·h</code></td>
+                  <td>Doble integral del flujo excedente; tiempo agregado perdido en cola.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Ecuación 2: Segundo TFC -->
+        <div class="eq-block" style="margin-bottom: 1.75rem;">
+          <div class="eq-block__title">2. Volumen acumulado exacto — Segundo Teorema Fundamental del Cálculo</div>
+          <div class="eq-block__formula">
+            <div class="math-line">
+              <em>Q</em>(<em>t</em>) = −285.71<em>t</em><sup>3</sup> + 1 007.20<em>t</em><sup>2</sup> + 2 603.59<em>t</em> + <em>K</em>
+            </div>
+            <div class="math-line math-line--flex">
+              <span><em>V</em> =</span>
+              <span class="math-int" aria-label="integral de 0 a 1.5">
+                <span class="math-int__sym">∫</span>
+                <span class="math-int__limits"><span>1.5</span><span>0</span></span>
+              </span>
+              <span><em>q</em>(<em>t</em>) d<em>t</em> = <em>Q</em>(1.5) − <em>Q</em>(0) =</span>
+              <span class="math-val">5 207.30 veh</span>
+            </div>
+          </div>
+          <div class="eq-block__note">
+            Valor analítico de referencia en <code>[0, 1.5] h</code> (6:15 a 7:45 a.m.) para medir el error de las Sumas de Riemann.
+          </div>
+        </div>
+
+        <!-- Tabla de errores de Riemann -->
+        <div class="table-wrap" style="margin-bottom: 0;">
+          <div class="table-header">
+            <div>
+              <h3>Comparación entre integración exacta y Sumas de Riemann</h3>
+              <small>Evaluación en el intervalo [0, 1.5] h con n = 6 subintervalos (Δt = 0.25 h)</small>
+            </div>
+            <a href="./tabla_errores_riemann.csv" download class="btn btn--sm">Descargar tabla (CSV)</a>
+          </div>
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Método de integración</th>
+                  <th>Fórmula operativa</th>
+                  <th class="num">Volumen [veh]</th>
+                  <th class="num">Error absoluto</th>
+                  <th class="num">Error relativo</th>
+                  <th>Interpretación</th>
+                </tr>
+              </thead>
+              <tbody id="riemannTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Congestión D/D/1 y Simulador Interactivo -->
+    <section id="simulador" class="section section--paper">
+      <div class="container">
+        <div class="section-heading">
+          <span class="section-num">03</span>
+          <h2>Congestión vehicular y simulador en vivo</h2>
+        </div>
+        <p class="section-intro" style="margin-bottom: 1.25rem;">
+          Cuando <code>q(t)</code> supera la capacidad de obra <code>C<sub>obra</sub></code>, el área entre ambas
+          curvas mide la fila acumulada. Modifica las particiones <code>n</code> y <code>C<sub>obra</sub></code> para
+          observar su efecto en tiempo real.
+        </p>
+
+        <blockquote class="pullquote" style="margin: 0 0 1.75rem;">
+          <span class="pullquote__caption">Pregunta clave</span>
+          ¿Qué pasa en la vida real cuando la vía en obra solo deja cruzar 2 800 carros por hora?
+        </blockquote>
+
+        <!-- Ecuación 3: Acumulación de cola -->
+        <div class="eq-block" style="margin-bottom: 1.75rem;">
+          <div class="eq-block__title">3. Acumulación de cola determinista D/D/1 (área entre curvas)</div>
+          <div class="eq-block__formula">
+            <div class="math-line math-line--flex">
+              <span><em>Q</em><sub>cola</sub>(<em>t</em>) =</span>
+              <span class="math-int" aria-label="integral de t_ini a t">
+                <span class="math-int__sym">∫</span>
+                <span class="math-int__limits"><span>t</span><span>t<sub>ini</sub></span></span>
+              </span>
+              <span>(<em>q</em>(τ) − <em>C</em><sub>obra</sub>) dτ</span>
+            </div>
+            <div class="math-line math-line--flex">
+              <span><em>Q</em><sub>máx</sub> =</span>
+              <span class="math-int" aria-label="integral de 0.1019 a 2.2482">
+                <span class="math-int__sym">∫</span>
+                <span class="math-int__limits"><span>2.2482</span><span>0.1019</span></span>
+              </span>
+              <span>(<em>q</em>(<em>t</em>) − 2 800) d<em>t</em> =</span>
+              <span class="math-val">1 412.43 veh</span>
+            </div>
+          </div>
+          <!-- <div class="eq-block__note">
+            Raíces de <code>q(t) = 2 800</code> en <code>t<sub>inicio</sub> = 0.1019 h</code> (6:21 a.m.) y
+            <code>t* = 2.2482 h</code> (8:29 a.m.).
+          </div> -->
+        </div>
+
+        <div class="lab-panel">
+          <div class="lab-controls">
+            <div class="ctrl-box">
+              <div class="ctrl-box__top">
+                <span>Vista gráfica</span>
+                <span class="ctrl-box__val">q(t) vs t</span>
+              </div>
+              <div class="btn-group" role="group" aria-label="Modo de gráfica">
+                <button type="button" class="tab-btn is-active" data-sim-mode="combined">Combinada</button>
+                <button type="button" class="tab-btn" data-sim-mode="riemann">Solo Riemann</button>
+                <button type="button" class="tab-btn" data-sim-mode="queue">Solo Colas</button>
+              </div>
+            </div>
+
+            <div class="ctrl-box">
+              <div class="ctrl-box__top">
+                <span>Sumas de Riemann</span>
+                <span class="ctrl-box__val" id="riemannNDisplay">n = 6</span>
+              </div>
+              <div class="btn-group" role="group" aria-label="Método numérico">
+                <button type="button" class="tab-btn" data-riemann-method="none">Ninguno</button>
+                <button type="button" class="tab-btn" data-riemann-method="left">Izquierda</button>
+                <button type="button" class="tab-btn" data-riemann-method="right">Derecha</button>
+                <button type="button" class="tab-btn is-active" data-riemann-method="midpoint">Punto Medio</button>
+              </div>
+              <input
+                id="riemannNRange"
+                class="range-slider"
+                type="range"
+                min="0"
+                max="3"
+                step="1"
+                value="0"
+                aria-label="Particiones n"
+              />
+              <div style="display:flex;justify-content:space-between;font-size:0.72rem;color:#6b7280;" class="mono">
+                <span>n=6</span><span>n=12</span><span>n=24</span><span>n=48</span>
+              </div>
+            </div>
+
+            <div class="ctrl-box">
+              <div class="ctrl-box__top">
+                <span>Capacidad en obra (C<sub>obra</sub>)</span>
+                <span class="ctrl-box__val" id="capDisplay">2800 veh/h</span>
+              </div>
+              <input
+                id="capRange"
+                class="range-slider"
+                type="range"
+                min="1800"
+                max="3900"
+                step="50"
+                value="2800"
+                aria-label="Capacidad C_obra"
+              />
+              <div class="preset-list">
+                <button type="button" class="preset-btn" data-cap-preset="2200">2200 Crítico</button>
+                <button type="button" class="preset-btn" data-cap-preset="2800">2800 Base</button>
+                <button type="button" class="preset-btn" data-cap-preset="3300">3300 Ola verde</button>
+                <button type="button" class="preset-btn" data-cap-preset="3850">3850 Libre</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="lab-workspace">
+            <div class="canvas-box">
+              <canvas id="simCanvas"></canvas>
+              <div id="simTooltip" class="canvas-tooltip"></div>
+
+              <div class="canvas-legend">
+                <span class="legend-item">
+                  <span class="swatch" style="background:#1d3557;"></span> Curva q(t)
+                </span>
+                <span class="legend-item">
+                  <span class="swatch" style="background:#b91c1c;"></span> C<sub>obra</sub>
+                </span>
+                <span class="legend-item">
+                  <span class="swatch swatch--area" style="background:rgba(185,28,28,0.22);border:1px solid #b91c1c;"></span> Represamiento Q<sub>máx</sub>
+                </span>
+                <span class="legend-item">
+                  <span class="swatch swatch--area" style="background:rgba(21,128,61,0.2);border:1px solid #15803d;"></span> Rectángulos Riemann
+                </span>
+              </div>
+            </div>
+
+            <aside class="readout-sidebar" aria-label="Lectura de métricas calculadas">
+              <div id="simStatusBanner" class="status-note status-note--danger">
+                Calculando escenario...
+              </div>
+
+              <table class="readout-table">
+                <tbody>
+                  <tr>
+                    <td class="readout-table__lbl">Volumen analítico exacto</td>
+                    <td class="readout-table__val">5 207.30 veh</td>
+                  </tr>
+                  <tr>
+                    <td class="readout-table__lbl" id="simRiemannSub">Aproximación</td>
+                    <td class="readout-table__val" id="simRiemannVal">—</td>
+                  </tr>
+                  <tr>
+                    <td class="readout-table__lbl">Error relativo (vs exacto)</td>
+                    <td class="readout-table__val" id="simErrorVal">—</td>
+                  </tr>
+                  <tr>
+                    <td class="readout-table__lbl">Cola máxima Q<sub>máx</sub></td>
+                    <td class="readout-table__val" style="color:var(--red);" id="simQmaxVal">—</td>
+                  </tr>
+                  <tr>
+                    <td class="readout-table__lbl">Ventana de saturación</td>
+                    <td class="readout-table__val" id="simWindowVal">—</td>
+                  </tr>
+                  <tr>
+                    <td class="readout-table__lbl">Retraso acumulado (TTD)</td>
+                    <td class="readout-table__val" id="simTtdVal">—</td>
+                  </tr>
+                  <tr>
+                    <td class="readout-table__lbl">Demora por vehículo</td>
+                    <td class="readout-table__val" id="simDelayVal">—</td>
+                  </tr>
+                </tbody>
+              </table>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Implementación Computacional -->
+    <section id="implementacion" class="section">
+      <div class="container">
+        <div class="section-heading">
+          <span class="section-num">04</span>
+          <h2>Implementación computacional</h2>
+        </div>
+        <p class="section-intro">
+          El ajuste polinomial, la integración simbólica y el análisis determinista de colas se implementaron de forma
+          equivalente en Python (NumPy, SymPy y Matplotlib) y en MATLAB para contrastar resultados entre ambos entornos.
+        </p>
+
+        <div class="code-box" style="margin-bottom: 0;">
+          <div class="code-box__bar">
+            <div class="btn-group" role="tablist" aria-label="Selector de lenguaje">
+              <button type="button" class="tab-btn is-active" data-code-lang="python">Python (Streamlit + SymPy)</button>
+              <button type="button" class="tab-btn" data-code-lang="matlab">MATLAB (App uifigure)</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:0.75rem;">
+              <span class="mono" style="font-size:0.78rem;color:var(--ink-muted);" id="codeFilename">streamlit_app.py</span>
+              <button type="button" class="btn btn--sm" id="copyCodeBtn">Copiar</button>
+            </div>
+          </div>
+          <pre><code id="codeDisplay"></code></pre>
+          <div class="code-box__foot">
+            <span>Entornos de cálculo verificados con el mismo polinomio cuadrático</span>
+            <div style="display:flex;gap:1rem;">
+              <a href="./streamlit_app.py" download>Descargar código Python (.py)</a>
+              <a href="./TraficoIntegralOnline.m" download>Descargar código MATLAB (.m)</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. Demora Total, Cronología y Conclusiones -->
+    <section id="conclusiones" class="section section--paper">
+      <div class="container">
+        <div class="section-heading">
+          <span class="section-num">05</span>
+          <h2>Demora total (TTD), cronología y conclusiones</h2>
+        </div>
+
+        <!-- Ecuación 4: TTD y disipación -->
+        <div class="eq-block" style="margin-bottom: 2rem;">
+          <div class="eq-block__title">4. Demora Total Vehicular (TTD) y disipación</div>
+          <div class="eq-block__formula">
+            <div class="math-line math-line--flex">
+              <span><em>TTD</em> =</span>
+              <span class="math-int" aria-label="integral de 0.1019 a 3.3214">
+                <span class="math-int__sym">∫</span>
+                <span class="math-int__limits"><span>3.3214</span><span>0.1019</span></span>
+              </span>
+              <span><em>Q</em><sub>cola</sub>(<em>t</em>) d<em>t</em> =</span>
+              <span class="math-val">2 557.82 veh·h</span>
+            </div>
+            <div class="math-line math-line--flex">
+              <span><em>d</em><sub>prom</sub> = <span class="math-val">29.47 min/veh</span></span>
+              <span>&nbsp;|&nbsp;</span>
+              <span><em>d</em><sub>máx</sub> = <span class="math-val">30.27 min/veh</span></span>
+            </div>
+          </div>
+          <div class="eq-block__note">
+            Conservación de masa completa hasta <code>t<sub>fin</sub> = 3.3214 h</code> (9:34 a.m.).
+          </div>
+        </div>
+
+        <!-- Gráfica PNG + Cronología -->
+        <div class="two-col" style="align-items: start; margin-bottom: 2.25rem;">
+          <figure class="figure-box">
+            <button
+              type="button"
+              class="img-preview-btn"
+              id="openFigureModal"
+              title="Ampliar gráfica del área de represamiento"
+            >
+              <img
+                src="./grafica_area_represamiento.png"
+                alt="Gráfica del Área de Represamiento entre q(t) y C_obra = 2800 veh/h"
+              />
+            </button>
+            <div class="img-actions">
+              <span style="font-size:0.84rem;color:var(--ink-muted);">
+                Área de represamiento entre <code>q(t)</code> y <code>C<sub>obra</sub> = 2 800 veh/h</code>. Haz clic sobre la imagen para ampliar.
+              </span>
+              <a href="./grafica_area_represamiento.png" download class="btn btn--sm">Descargar PNG</a>
+            </div>
+          </figure>
+
+          <div class="figure-box">
+            <h3 style="margin-bottom: 1rem;">Cronología del episodio de saturación</h3>
+            <ul class="chronology">
+              <li>
+                <div class="chronology__time">6:15 a.m. · t = 0.000 h</div>
+                <div class="chronology__title">Inicio de medición matinal</div>
+                <div class="chronology__desc">
+                  Flujo inicial de <code>2 603.59 veh/h</code> inferior a <code>C_obra</code>; aún no existe cola.
+                </div>
+              </li>
+              <li>
+                <div class="chronology__time">6:21 a.m. · t<sub>inicio</sub> = 0.102 h</div>
+                <div class="chronology__title">Inicio de formación de cola</div>
+                <div class="chronology__desc">
+                  La curva <code>q(t)</code> cruza los <code>2 800 veh/h</code> en fase ascendente.
+                </div>
+              </li>
+              <li class="is-critical">
+                <div class="chronology__time">7:25 a.m. · t<sub>pico</sub> = 1.175 h</div>
+                <div class="chronology__title">Demanda máxima de llegada (3 787 veh/h)</div>
+                <div class="chronology__desc">
+                  Vértice de la parábola con un excedente instantáneo de <code>987 veh/h</code> sobre la capacidad.
+                </div>
+              </li>
+              <li class="is-critical">
+                <div class="chronology__time">8:29 a.m. · t* = 2.248 h</div>
+                <div class="chronology__title">Máximo represamiento: 1 412.43 vehículos</div>
+                <div class="chronology__desc">
+                  Segundo cruce <code>q(t*) = 2 800</code> en fase descendente; demora en cola de
+                  <code>30.27 min/veh</code>.
+                </div>
+              </li>
+              <li>
+                <div class="chronology__time">9:34 a.m. · t<sub>fin</sub> = 3.321 h</div>
+                <div class="chronology__title">Evacuación total de la cola</div>
+                <div class="chronology__desc">
+                  El sistema se despeja tras acumular <code>2 557.82 veh·h</code> de retraso total.
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="two-col--equal two-col" style="margin-bottom: 0;">
+          <div>
+            <h3>Conclusiones principales</h3>
+            <p>
+              Entre las 6:15 y las 7:45 a.m. ingresan exactamente <strong>5 207.30 vehículos</strong> al corredor
+              evaluado, cifra que la Regla del Punto Medio reproduce con solo <code>0.129 %</code> de error usando
+              <code>n = 6</code> subintervalos.
+            </p>
+            <p>
+              Con la capacidad de obra actual (<code>2 800 veh/h</code>), la congestión inicia a las
+              <strong>6:21 a.m.</strong>, alcanza una cola máxima de <strong>1 412.43 vehículos</strong> a las
+              <strong>8:29 a.m.</strong> y no se despeja por completo hasta las <strong>9:34 a.m.</strong>, explicando
+              las demoras de hasta <code>30.27 min</code> adicionales solo en el cuello de botella.
+            </p>
+            <p>
+              <strong>Limitaciones del modelo:</strong> El esquema determinista <code>D/D/1</code> asume capacidad
+              constante de <code>2 800 veh/h</code> (sin bloqueos aleatorios a un carril) y proyecta la parábola más
+              allá de las 7:45 a.m. para estimar el vaciado total.
+            </p>
+          </div>
+
+          <div>
+            <h3>Recomendaciones operativas</h3>
+            <p>
+              <strong>1. Gestión de intersecciones:</strong> Como muestra el simulador, medidas operativas (ola verde y
+              control de bloqueos) que eleven <code>C<sub>obra</sub></code> de <code>2 800</code> a <code>3 300 veh/h</code>
+              reducen la cola máxima de <strong>1 412.43 a 489.63 vehículos (−65.3 %)</strong>.
+            </p>
+            <p>
+              <strong>2. Horarios y maniobras de obra:</strong> Evitar cargue o descargue con cierre de un carril entre
+              6:20 y 9:00 a.m. y considerar márgenes escalonados de ingreso académico frente a la franja pico matinal.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. Integrantes del Proyecto -->
+    <section id="integrantes" class="section">
+      <div class="container">
+        <div class="section-heading">
+          <span class="section-num">06</span>
+          <h2>Integrantes del proyecto</h2>
+        </div>
+        <p class="section-intro">
+          Equipo responsable de la investigación de campo, el planteamiento matemático y la implementación computacional.
+        </p>
+
+        <div class="team-layout">
+          <div class="team-meta">
+            <dl>
+              <div class="team-meta__row">
+                <dt>Institución</dt>
+                <dd>Fundación Universitaria Compensar</dd>
+              </div>
+              <div class="team-meta__row">
+                <dt>Programa académico</dt>
+                <dd>Ingeniería de Software</dd>
+              </div>
+              <div class="team-meta__row">
+                <dt>Asignatura</dt>
+                <dd>Cálculo Integral · 2026</dd>
+              </div>
+              <div class="team-meta__row">
+                <dt>Docente</dt>
+                <dd>Francisco Esteban Rodríguez Medranda</dd>
+              </div>
+              <div class="team-meta__row">
+                <dt>Corredor de estudio</dt>
+                <dd>Av. Carrera 68 (Calle 26 – Calle 53)</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="team-grid" aria-label="Listado de integrantes">
+            <div class="member-card">
+              <span class="member-card__num">01</span>
+              <div>
+                <div class="member-card__name">Andrés Salinas</div>
+                <div class="member-card__sub">Ingeniería de Software</div>
+              </div>
+            </div>
+            <div class="member-card">
+              <span class="member-card__num">02</span>
+              <div>
+                <div class="member-card__name">Nicolás Cáceres</div>
+                <div class="member-card__sub">Ingeniería de Software</div>
+              </div>
+            </div>
+            <div class="member-card">
+              <span class="member-card__num">03</span>
+              <div>
+                <div class="member-card__name">Paula García</div>
+                <div class="member-card__sub">Ingeniería de Software</div>
+              </div>
+            </div>
+            <div class="member-card">
+              <span class="member-card__num">04</span>
+              <div>
+                <div class="member-card__name">Juan Méndez</div>
+                <div class="member-card__sub">Ingeniería de Software</div>
+              </div>
+            </div>
+            <div class="member-card">
+              <span class="member-card__num">05</span>
+              <div>
+                <div class="member-card__name">Laura Alquichides</div>
+                <div class="member-card__sub">Ingeniería de Software</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer__grid">
+      <div>
+        <h4>TráficoIntegral — Av. Carrera 68</h4>
+        <p>
+          Proyecto de Cálculo Integral · Programa de Ingeniería de Software · Fundación Universitaria Compensar.
+        </p>
+      </div>
+      <div>
+        <h4>Integrantes</h4>
+        <ul>
+          <li>Andrés Salinas</li>
+          <li>Nicolás Cáceres</li>
+          <li>Paula García</li>
+          <li>Juan Méndez</li>
+          <li>Laura Alquichides</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Recursos del estudio</h4>
+        <ul>
+          <li>Docente: Francisco Esteban Rodríguez Medranda</li>
+          <li><a href="./plantilla_datos.csv" download>Aforos SDM Nodo 22699 (CSV)</a></li>
+          <li><a href="./tabla_errores_riemann.csv" download>Comparación de Riemann (CSV)</a></li>
+          <li><a href="./grafica_area_represamiento.png" download>Gráfica de represamiento (PNG)</a></li>
+        </ul>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Modal para ampliar la gráfica -->
+  <div class="modal" id="imageModal" role="dialog" aria-modal="true" aria-label="Vista ampliada de la gráfica">
+    <div class="modal__box">
+      <button type="button" class="modal__close" id="closeModalBtn" aria-label="Cerrar">×</button>
+      <img
+        src="./grafica_area_represamiento.png"
+        alt="Gráfica ampliada del Área de Represamiento entre q(t) y C_obra = 2800 veh/h"
+        style="width:100%;height:auto;"
+      />
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

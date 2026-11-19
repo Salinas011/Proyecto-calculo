@@ -1,0 +1,15 @@
+# Entorno y caché
+.vscode/
+__pycache__/
+*.pyc
+
+# Archivos comprimidos
+*.zip
+
+# Documentos Word (guiones, rúbrica e informes)
+*.docx
+*.xlsx
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
