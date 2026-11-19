@@ -6,7 +6,7 @@ __pycache__/
 # Archivos comprimidos
 *.zip
 
-# Documentos Word (guiones, rúbrica e informes)
+# Documentos Word
 *.docx
 *.xlsx
 
